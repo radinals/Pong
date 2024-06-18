@@ -34,6 +34,7 @@ Game::Game()
 
 Game::~Game()
 {
+    SDL_DestroyRenderer(m_window.renderer);
     SDL_DestroyWindow(m_window.window);
     SDL_Quit();
 }
