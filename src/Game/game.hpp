@@ -3,11 +3,9 @@
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_stdinc.h>
-#include <cstdint>
-#include <iostream>
 
 class Game {
-    struct GameObjects_t;
+    struct Entitys_t;
 
 public:
     ~Game();
@@ -17,88 +15,66 @@ public:
 
 private:
     enum MoveDirections {
-        MD_NONE  = 0,
+        MD_NONE,
+        MD_LEFT  = 1 << 0,
+        MD_RIGHT = 2 << 0,
         MD_UP    = 1 << 2,
         MD_DOWN  = 2 << 2,
-        MD_LEFT  = 3 << 2,
-        MD_RIGHT = 4 << 2,
-    };
-
-    struct GameObject_t {
-        SDL_Rect       rect;
-        MoveDirections move_direction;
-
-        void move(unsigned int direction, int speed = 10)
-        {
-            switch (direction) {
-                case MD_UP:
-                    move_direction = MD_UP;
-                    rect.y -= speed;
-                    break;
-                case MD_DOWN:
-                    move_direction = MD_DOWN;
-                    rect.y += speed;
-                    break;
-                case MD_LEFT:
-                    rect.x -= speed;
-                    break;
-                case MD_RIGHT:
-                    rect.x += speed;
-                    break;
-                default:
-                    break;
-            }
-        };
     };
 
     struct Color_t {
         int r = 0, g = 0, b = 0, a = 0;
     };
 
-    struct BallInfo_t {
-        static inline MoveDirections y_axis_direction = MD_NONE,
-                                     x_axis_direction = MD_LEFT;
-    } m_ball_info;
+    struct Entity_t {
+        int          x = 0, y = 0, w = 0, h = 0;
+        unsigned int move_direction = 0;
+        float        move_speed     = 0;
+        Color_t      color;
+
+        inline void setYDirection(const MoveDirections &direction)
+        {
+            move_direction
+                = (move_direction ^ (move_direction & (3 << 2))) | direction;
+        };
+
+        inline void setXDirection(const MoveDirections &direction)
+        {
+            move_direction
+                = (move_direction ^ (move_direction & (3))) | direction;
+        }
+
+        inline SDL_Rect toRect() const
+        {
+            return SDL_Rect { .x = x, .y = y, .w = w, .h = h };
+        }
+    };
 
     struct GameWindow_t {
-        static inline const char *window_title = "Pong";
-        static constexpr int      window_w = 800, window_h = 600;
-
-        static inline SDL_Window   *window   = nullptr;
-        static inline SDL_Renderer *renderer = nullptr;
-        static inline SDL_Surface  *surface  = nullptr;
-
-        static const inline Color_t window_bg
+        static constexpr const char *window_title = "Pong";
+        static constexpr int         window_w = 800, window_h = 600;
+        static const inline Color_t  bg_Color
             = { .r = 0, .g = 0, .b = 0, .a = 255 };
 
-        static const inline Color_t window_fg
-            = { .r = 255, .g = 255, .b = 255, .a = 255 };
+        SDL_Window   *window   = nullptr;
+        SDL_Renderer *renderer = nullptr;
+    } m_window;
 
-    } m_game_window;
+    bool     m_game_reset = false, m_vs_com = false;
+    size_t   m_player_1_points = 0, m_player_2_points = 0;
+    Entity_t m_player_1, m_player_2, m_ball;
 
-    bool m_game_reset = false;
-    int  m_ball_speed = 1;
+    void drawBackground();
+    void moveEntity(Entity_t *const);
+    void drawEntity(const Entity_t &);
+    void drawEntities();
+    void initEntities();
+    void movePlayers();
+    void moveBall();
+    void calculateBallYMovement(Entity_t *const);
+    void drawScore(size_t score, int pixel_size, int x_offset);
 
-    static inline MoveDirections m_ball_movement_direction
-        = MoveDirections::MD_RIGHT;
-
-    static inline GameObject_t m_player_1, m_player_2, m_ball;
-
-    static inline const Uint8 *m_keystates;
-
-    void       drawBackground();
-    void       drawObject(GameObject_t *const);
-    void       drawFrame();
-    void       configureObjects();
-    void       moveBall();
-    void       calculateBallYMovement(GameObject_t *);
-    static int randomRange(int min, int max);
-
-    // void checkWinState();
-
-    // void reset();
-
-    static bool hasCollision(GameObject_t *, GameObject_t *);
+    static bool hasCollision(const Entity_t &, const Entity_t &);
 };
 
 #endif    // !GAME_H

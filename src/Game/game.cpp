@@ -1,40 +1,40 @@
 #include "game.hpp"
+#include "letters.hpp"
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_events.h>
 #include <SDL2/SDL_keyboard.h>
 #include <SDL2/SDL_keycode.h>
 #include <SDL2/SDL_pixels.h>
-#include <SDL2/SDL_rect.h>
 #include <SDL2/SDL_render.h>
 #include <SDL2/SDL_timer.h>
 #include <SDL2/SDL_video.h>
-#include <iostream>
-#include <random>
+#include <cassert>
 #include <stdexcept>
 
 Game::Game()
 {
     if (SDL_Init(SDL_INIT_EVERYTHING) >= 0) {
-        m_game_window.window   = SDL_CreateWindow(m_game_window.window_title,
-                                                SDL_WINDOWPOS_UNDEFINED,
-                                                SDL_WINDOWPOS_UNDEFINED,
-                                                m_game_window.window_w,
-                                                m_game_window.window_h,
-                                                SDL_WINDOW_SHOWN);
-        m_game_window.renderer = SDL_CreateRenderer(m_game_window.window,
-                                                    -1,
-                                                    SDL_RENDERER_ACCELERATED);
+        m_window.window = SDL_CreateWindow(m_window.window_title,
+                                           SDL_WINDOWPOS_UNDEFINED,
+                                           SDL_WINDOWPOS_UNDEFINED,
+                                           m_window.window_w,
+                                           m_window.window_h,
+                                           SDL_WINDOW_SHOWN);
+        m_window.renderer
+            = SDL_CreateRenderer(m_window.window, -1, SDL_RENDERER_ACCELERATED);
     } else {
         throw std::runtime_error("Game::Game(): Failed to Create Window");
     }
 
-    configureObjects();
+    m_player_2.color = m_player_1.color = m_ball.color
+        = { .r = 255, .g = 255, .b = 255, .a = 255 };
+    initEntities();
 }
 
 Game::~Game()
 {
-    SDL_DestroyWindow(m_game_window.window);
+    SDL_DestroyWindow(m_window.window);
     SDL_Quit();
 }
 
@@ -42,261 +42,272 @@ int
 Game::play()
 {
     SDL_Event e;
-    bool      quit = false;
 
-    while (!quit) {
+    while (true) {
+        m_player_1.setYDirection(MD_NONE);
+        m_player_2.setYDirection(MD_NONE);
+
         SDL_PumpEvents();
         while (SDL_PollEvent(&e)) {
-            if (e.type == SDL_QUIT) {
-                quit = true;
-                break;
-            }
-            m_player_1.move_direction = MD_NONE;
-            switch (e.key.keysym.sym) {
-                case SDLK_UP:
-                    m_player_1.move_direction = MD_UP;
-                    m_player_1.move(MoveDirections::MD_UP);
-                    break;
-                case SDLK_DOWN:
-                    m_player_1.move_direction = MD_DOWN;
-                    m_player_1.move(MoveDirections::MD_DOWN);
-                    break;
-                    // case SDLK_w:
-                    //     m_player_2.move(MoveDirections::MD_UP);
-                    //     break;
-                    // case SDLK_s:
-                    //     m_player_2.move(MoveDirections::MD_DOWN);
-                    //     break;
-            }
-            if (m_player_1.rect.y <= 0) {
-                m_player_1.rect.y = 0;
-            } else if ((m_player_1.rect.y + m_player_1.rect.h)
-                       >= m_game_window.window_h) {
-                m_player_1.rect.y = m_game_window.window_h - m_player_1.rect.h;
+            if (e.type == SDL_QUIT) { return 0; }
+            if (e.type == SDL_KEYDOWN) {
+                switch (e.key.keysym.sym) {
+                    case SDLK_UP:
+                        m_player_1.setYDirection(MD_UP);
+                        break;
+                    case SDLK_DOWN:
+                        m_player_1.setYDirection(MD_DOWN);
+                        break;
+                    case SDLK_j:
+                        m_player_2.setYDirection(MD_UP);
+                        break;
+                    case SDLK_k:
+                        m_player_2.setYDirection(MD_DOWN);
+                        break;
+                    case SDLK_F1:
+                        m_vs_com = !m_vs_com;
+                        break;
+                    case SDLK_F2:
+                        m_ball.move_speed++;
+                        if (m_ball.move_speed >= m_ball.w) {
+                            m_ball.move_speed = m_ball.w;
+                        }
+                        break;
+                    case SDLK_F3:
+                        m_ball.move_speed--;
+                        if (m_ball.move_speed <= 0) { m_ball.move_speed = 1; }
+                        break;
+                    case SDLK_F4:
+                        m_player_1_points = m_player_2_points = 0;
+                        initEntities();
+                        break;
+                }
             }
         }
 
-        SDL_SetRenderDrawColor(m_game_window.renderer, 50, 100, 50, 255);
-        SDL_RenderClear(m_game_window.renderer);
-
+        movePlayers();
         moveBall();
 
         if (m_game_reset) {
-            configureObjects();
+            initEntities();
             m_game_reset = false;
             continue;
         }
 
-        float nw_y
-            = (m_ball.rect.y + m_ball.rect.h) - (m_player_2.rect.h * 0.5f);
-
-        if (nw_y > m_player_2.rect.y) {
-            m_player_2.move_direction = MD_DOWN;
-        } else if (nw_y == m_player_2.rect.y) {
-            m_player_2.move_direction = MD_NONE;
-        } else {
-            m_player_2.move_direction = MD_UP;
-        }
-
-        // if (nw_y > m_player_1.rect.y) {
-        //     m_player_1.move_direction = MD_DOWN;
-        // } else if (nw_y == m_player_1.rect.y) {
-        //     m_player_1.move_direction = MD_NONE;
-        // } else {
-        //     m_player_1.move_direction = MD_UP;
-        // }
-
-        m_player_2.rect.y = nw_y;
-        // m_player_1.rect.y = nw_y;
-
-        if (m_player_2.rect.y <= 0) {
-            m_player_2.rect.y = 0;
-        } else if ((m_player_2.rect.y + m_player_2.rect.h)
-                   >= m_game_window.window_h) {
-            m_player_2.rect.y = m_game_window.window_h - m_player_2.rect.h;
-        }
-
-        // if (m_player_1.rect.y <= 0) {
-        //     m_player_1.rect.y = 0;
-        // } else if ((m_player_1.rect.y + m_player_1.rect.h)
-        //            >= m_game_window.window_h) {
-        //     m_player_1.rect.y = m_game_window.window_h - m_player_1.rect.h;
-        // }
-
         drawBackground();
-        drawFrame();
-        SDL_RenderPresent(m_game_window.renderer);
+        drawEntities();
+
+        SDL_RenderPresent(m_window.renderer);
         SDL_Delay(50);
+
+        if (m_player_2_points >= 3 || m_player_1_points >= 3) {
+            m_player_1_points = m_player_2_points = 0;
+            SDL_Delay(500);
+            initEntities();
+            continue;
+        }
     }
 
-    return 0;
+    return -1;
 }
 
 void
-Game::configureObjects()
+Game::initEntities()
 {
-    m_ball_info.y_axis_direction = MD_NONE;
-    m_ball_info.x_axis_direction = MD_LEFT;
+    m_ball.setYDirection(MD_NONE);
+    m_ball.setXDirection(MD_LEFT);
 
-    m_ball.rect.w = m_ball.rect.h = m_game_window.window_h * 0.05f;
-    m_ball.rect.y = (m_game_window.window_h * 0.5f) - m_ball.rect.h * 0.5f;
-    m_ball.rect.x = (m_game_window.window_w * 0.5f) - m_ball.rect.w * 0.5f;
+    m_player_1.move_direction = m_player_2.move_direction = MD_NONE;
 
-    m_ball_speed = m_ball.rect.w;
+    m_ball.w = m_ball.h = m_window.window_h * 0.05f;
+    m_ball.y            = (m_window.window_h * 0.5f) - m_ball.h * 0.5f;
+    m_ball.x            = (m_window.window_w * 0.5f) - m_ball.w * 0.5f;
 
-    m_player_1.move_direction = MD_NONE;
-    m_player_2.move_direction = MD_NONE;
+    m_player_1.w = m_player_2.w = (m_ball.w);
+    m_player_1.h = m_player_2.h = (m_ball.h * 4);
 
-    m_player_1.rect.w = m_player_2.rect.w = (m_ball.rect.w);
-    m_player_1.rect.h = m_player_2.rect.h = (m_ball.rect.h * 4);
+    m_player_1.x = m_ball.w * 2;
+    m_player_1.y = (m_window.window_h * 0.5f) - (m_player_1.h * 0.5f);
 
-    m_player_1.rect.x = m_ball.rect.w * 2;
-    m_player_1.rect.y
-        = (m_game_window.window_h * 0.5f) - (m_player_1.rect.h * 0.5f);
+    m_player_2.x = (m_window.window_w - m_player_2.w) - m_ball.w * 2;
+    m_player_2.y = (m_window.window_h * 0.5f) - (m_player_2.h * 0.5f);
 
-    m_player_2.rect.x
-        = (m_game_window.window_w - m_player_2.rect.w) - m_ball.rect.w * 2;
-    m_player_2.rect.y
-        = (m_game_window.window_h * 0.5f) - (m_player_2.rect.h * 0.5f);
+    m_player_1.move_speed = m_player_2.move_speed = m_player_1.h * 0.2f;
+    m_ball.move_speed                             = m_ball.h * 0.5f;
+}
+
+void
+Game::drawScore(size_t score, int pixel_size, int x_offset)
+{
+    const int y_offset = (pixel_size * Letters::LETTER_H);
+    SDL_Rect  p;
+
+    p.w = p.h = pixel_size;
+    p.y       = y_offset;
+
+    for (size_t i = 0; i < Letters::LETTER_H; i++) {
+        p.x = x_offset;
+        for (size_t j = 0; j < Letters::LETTER_W; j++) {
+            if (Letters::letters[score][i][j]) {
+                SDL_RenderFillRect(m_window.renderer, &p);
+            }
+            p.x += pixel_size;
+        }
+        p.y += pixel_size;
+    }
 }
 
 void
 Game::drawBackground()
 {
-    SDL_SetRenderDrawColor(m_game_window.renderer, 255, 255, 255, 255);
+    SDL_SetRenderDrawColor(m_window.renderer,
+                           m_window.bg_Color.r,
+                           m_window.bg_Color.g,
+                           m_window.bg_Color.b,
+                           m_window.bg_Color.a);
+
+    SDL_RenderClear(m_window.renderer);
+
+    SDL_SetRenderDrawColor(m_window.renderer, 255, 255, 255, 255);
     SDL_Rect separator;
 
-    separator.h = m_game_window.window_h;
-    separator.w = 10;
+    separator.h = m_window.window_h;
+    separator.w = m_window.window_w * 0.01f;
+    separator.x = (m_window.window_w * 0.5f) - (separator.w * 0.5f);
+    separator.y = m_window.window_h - separator.h;
 
-    separator.x = (m_game_window.window_w * 0.5f) - (separator.w * 0.5f);
-    separator.y = m_game_window.window_h - separator.h;
+    const int px      = separator.w;
+    const int spacing = separator.w * 4;
 
-    SDL_RenderFillRect(m_game_window.renderer, &separator);
+    drawScore(m_player_1_points,
+              px,
+              (separator.x + (separator.w * 0.5f))
+                  - ((Letters::LETTER_W * px) + spacing));
+    drawScore(m_player_2_points,
+              px,
+              (separator.x + (separator.w * 0.5f)) + spacing);
+
+    SDL_RenderFillRect(m_window.renderer, &separator);
 }
 
 void
-Game::drawObject(GameObject_t *const obj)
+Game::drawEntity(const Entity_t &entity)
 {
-    SDL_RenderFillRect(m_game_window.renderer, &obj->rect);
+    const SDL_Rect r = entity.toRect();
+    SDL_SetRenderDrawColor(m_window.renderer,
+                           entity.color.r,
+                           entity.color.g,
+                           entity.color.b,
+                           entity.color.a);
+    SDL_RenderFillRect(m_window.renderer, &r);
 }
 
 void
-Game::drawFrame()
+Game::drawEntities()
 {
-    SDL_SetRenderDrawColor(m_game_window.renderer, 255, 255, 0, 255);
-    drawObject(&m_ball);
-    // GameObject_t b(m_ball);
-    // b.rect.h += m_ball.rect.h * 0.3f;
-    // b.rect.w -= m_ball.rect.w * 0.3f;
-    // b.rect.x = ((m_ball.rect.x) + (m_ball.rect.w * 0.5f)) - (b.rect.w *
-    // 0.5f); b.rect.y = ((m_ball.rect.y) + (m_ball.rect.h * 0.5f)) - (b.rect.h
-    // * 0.5f);
-    drawObject(&m_ball);
-    // drawObject(&b);
-    SDL_SetRenderDrawColor(m_game_window.renderer, 0, 200, 200, 255);
-    drawObject(&m_player_1);
-    drawObject(&m_player_2);
+    drawEntity(m_ball);
+    drawEntity(m_player_1);
+    drawEntity(m_player_2);
 }
 
 bool
-Game::hasCollision(GameObject_t *a, GameObject_t *b)
+Game::hasCollision(const Entity_t &a, const Entity_t &b)
 {
-    const float aMinX = a->rect.x;
-    const float aMaxY = a->rect.y + a->rect.h;
-    const float aMaxX = a->rect.x + a->rect.w;
-    const float aMinY = a->rect.y;
+    const float aMinX = a.x;
+    const float aMaxY = a.y + a.h;
+    const float aMaxX = a.x + a.w;
+    const float aMinY = a.y;
 
-    const float bMinX = b->rect.x;
-    const float bMaxY = b->rect.y + b->rect.h;
-    const float bMaxX = b->rect.x + b->rect.w;
-    const float bMinY = b->rect.y;
+    const float bMinX = b.x;
+    const float bMaxY = b.y + b.h;
+    const float bMaxX = b.x + b.w;
+    const float bMinY = b.y;
 
     return !(aMaxX <= bMinX || aMinX >= bMaxX || aMaxY <= bMinY
              || aMinY >= bMaxY);
 }
 
-int
-Game::randomRange(int min, int max)
+void
+Game::calculateBallYMovement(Entity_t *p)
 {
-    std::random_device rd;
-    std::mt19937       gen(rd());
-
-    std::uniform_int_distribution<size_t> distr(min, max);
-
-    return distr(gen);
+    m_ball.setYDirection(MD_NONE);
+    m_ball.setYDirection(MoveDirections((p->move_direction >> 2) << 2));
 }
 
 void
-Game::calculateBallYMovement(GameObject_t *p)
+Game::moveEntity(Entity_t *const entity)
 {
-    GameObject_t *b = &m_ball;
-
-    const float paddel_section_h = float(p->rect.h) / 3.0f;
-
-    const float bMinX = b->rect.x;
-    const float bMinY = b->rect.y;
-    const float bMaxX = b->rect.x + b->rect.w;
-    const float bMaxY = b->rect.y + b->rect.h;
-
-    const float pMinX = p->rect.x;
-
-    const float pMaxX = p->rect.x + p->rect.w;
-
-    // upper paddel
-    {
-        const float pMaxY = (p->rect.y + p->rect.h) - (paddel_section_h * 2);
-        const float pMinY = p->rect.y;
-
-        if (!((pMaxX < bMinX || pMinX > bMaxX)
-              || (pMaxY < bMinY || pMinY > bMaxY))) {
-            std::cout << "UPPER PADDEL HIT\n";
-            if (p->move_direction == MD_DOWN) {
-                m_ball_info.y_axis_direction = MD_DOWN;
-            } else {
-                m_ball_info.y_axis_direction = MD_UP;
-            }
+    switch (entity->move_direction) {
+        case MD_NONE:
             return;
-        }
+        case MD_LEFT:
+
+            entity->x -= entity->move_speed;
+            break;
+        case MD_RIGHT:
+
+            entity->x += entity->move_speed;
+            break;
+        case MD_UP:
+
+            entity->y -= entity->move_speed;
+            break;
+        case MD_DOWN:
+
+            entity->y += entity->move_speed;
+            break;
+        case (MD_LEFT | MD_UP):
+
+            entity->x -= entity->move_speed;
+            entity->y -= entity->move_speed;
+            break;
+        case (MD_LEFT | MD_DOWN):
+
+            entity->x -= entity->move_speed;
+            entity->y += entity->move_speed;
+            break;
+        case (MD_RIGHT | MD_UP):
+
+            entity->x += entity->move_speed;
+            entity->y -= entity->move_speed;
+            break;
+        case (MD_RIGHT | MD_DOWN):
+
+            entity->x += entity->move_speed;
+            entity->y += entity->move_speed;
+            break;
+        default:
+            return;
     }
 
-    // middle paddel
-    {
-        const float pMaxY = (p->rect.y + p->rect.h) - (paddel_section_h * 1);
-        const float pMinY = p->rect.y + (paddel_section_h * 1);
-
-        if (!((pMaxX < bMinX || pMinX > bMaxX)
-              || (pMaxY < bMinY || pMinY > bMaxY))) {
-            std::cout << "MIDDLE PADDEL HIT\n";
-            switch (randomRange(0, 2)) {
-                case 0:
-                    m_ball_info.y_axis_direction = MD_NONE;
-                    break;
-                case 1:
-                    m_ball_info.y_axis_direction = MD_UP;
-                    break;
-                case 2:
-                    m_ball_info.y_axis_direction = MD_DOWN;
-                    break;
-            }
-            return;
-        }
+    if (entity->y <= 0) {
+        entity->y = 0;
+    } else if ((entity->y + entity->h) >= m_window.window_h) {
+        entity->y = m_window.window_h - entity->h;
     }
+}
 
-    // lower paddel
-    {
-        const float pMaxY = (p->rect.y + p->rect.h);
-        const float pMinY = p->rect.y + (paddel_section_h * 2);
+void
+Game::movePlayers()
+{
+    moveEntity(&m_player_1);
 
-        if (!((pMaxX < bMinX || pMinX > bMaxX)
-              || (pMaxY < bMinY || pMinY > bMaxY))) {
-            std::cout << "LOWER PADDEL HIT\n";
-            if (p->move_direction == MD_DOWN) {
-                m_ball_info.y_axis_direction = MD_DOWN;
-            } else {
-                m_ball_info.y_axis_direction = MD_UP;
-            }
-            return;
+    if (!m_vs_com) {
+        moveEntity(&m_player_2);
+    } else {
+        if (m_player_2.y > m_ball.y) {
+            m_player_2.setYDirection(MD_UP);
+        } else if (m_player_2.y > m_ball.y) {
+            m_player_2.setYDirection(MD_DOWN);
+        } else {
+            m_player_2.setYDirection(MD_NONE);
+        }
+
+        m_player_2.y = m_ball.y;
+        if (m_player_2.y <= 0) {
+            m_player_2.y = 0;
+        } else if ((m_player_2.y + m_player_2.h) >= m_window.window_h) {
+            m_player_2.y = m_window.window_h - m_player_2.h;
         }
     }
 }
@@ -304,33 +315,23 @@ Game::calculateBallYMovement(GameObject_t *p)
 void
 Game::moveBall()
 {
-    if (hasCollision(&m_player_1, &m_ball)) {
+    if (hasCollision(m_player_1, m_ball)) {
         calculateBallYMovement(&m_player_1);
-        std::cout << "PLAYER 1 HIT\n";
-
-        m_ball_info.x_axis_direction = MD_RIGHT;
-    } else if (hasCollision(&m_player_2, &m_ball)) {
+        m_ball.setXDirection(MD_RIGHT);
+    } else if (hasCollision(m_player_2, m_ball)) {
         calculateBallYMovement(&m_player_2);
-        std::cout << "PLAYER 2 HIT\n";
-        m_ball_info.x_axis_direction = MD_LEFT;
-    } else if ((m_ball.rect.x + m_ball.rect.w)
-               >= (m_player_2.rect.x + m_player_2.rect.w)) {
-        std::cout << "RIGHT WALL HIT\n";
-        std::cout << "RIGHT_WALL(X)" << m_player_2.rect.x + m_player_2.rect.w
-                  << ' ';
-        std::cout << "BALL(X,Y)" << m_ball.rect.x << '\n';
+        m_ball.setXDirection(MD_LEFT);
+    } else if ((m_ball.x + m_ball.w) >= (m_player_2.x + m_player_2.w)) {
+        m_player_1_points++;
         m_game_reset = true;
-    } else if (m_ball.rect.x < m_player_1.rect.x) {
-        std::cout << "LEFT WALL HIT\n";
-        std::cout << "LEFT_WALL(X)" << m_player_1.rect.x << ' ';
-        std::cout << "BALL(X,Y)" << m_ball.rect.x << '\n';
+    } else if (m_ball.x < m_player_1.x) {
+        m_player_2_points++;
         m_game_reset = true;
-    } else if (m_ball.rect.y <= 0) {
-        m_ball_info.y_axis_direction = MD_DOWN;
-    } else if ((m_ball.rect.y + m_ball.rect.h) >= m_game_window.window_h) {
-        m_ball_info.y_axis_direction = MD_UP;
+    } else if (m_ball.y <= 0) {
+        m_ball.setYDirection(MD_DOWN);
+    } else if ((m_ball.y + m_ball.h) >= m_window.window_h) {
+        m_ball.setYDirection(MD_UP);
     }
 
-    m_ball.move(m_ball_info.x_axis_direction, m_ball_speed);
-    m_ball.move(m_ball_info.y_axis_direction, m_ball_speed);
+    moveEntity(&m_ball);
 }
