@@ -27,8 +27,9 @@ Game::Game()
         throw std::runtime_error("Game::Game(): Failed to Create Window");
     }
 
-    m_player_2.color = m_player_1.color = m_ball.color
+    m_player_1.color = m_player_2.color = m_ball.color
         = { .r = 255, .g = 255, .b = 255, .a = 255 };
+
     initEntities();
 }
 
@@ -101,7 +102,8 @@ Game::play()
         SDL_RenderPresent(m_window.renderer);
         SDL_Delay(50);
 
-        if (m_player_2_points >= 3 || m_player_1_points >= 3) {
+        if (m_player_2_points >= Letters::LETTER_AMOUNT - 1
+            || m_player_1_points >= Letters::LETTER_AMOUNT - 1) {
             m_player_1_points = m_player_2_points = 0;
             SDL_Delay(500);
             initEntities();
@@ -149,7 +151,8 @@ Game::drawScore(size_t score, int pixel_size, int x_offset)
     for (size_t i = 0; i < Letters::LETTER_H; i++) {
         p.x = x_offset;
         for (size_t j = 0; j < Letters::LETTER_W; j++) {
-            if (Letters::letters[score][i][j]) {
+            if (score < Letters::LETTER_AMOUNT
+                && Letters::letters[score][i][j]) {
                 SDL_RenderFillRect(m_window.renderer, &p);
             }
             p.x += pixel_size;
@@ -166,16 +169,17 @@ Game::drawBackground()
                            m_window.bg_Color.g,
                            m_window.bg_Color.b,
                            m_window.bg_Color.a);
-
     SDL_RenderClear(m_window.renderer);
 
     SDL_SetRenderDrawColor(m_window.renderer, 255, 255, 255, 255);
-    SDL_Rect separator;
 
+    SDL_Rect separator;
     separator.h = m_window.window_h;
     separator.w = m_window.window_w * 0.01f;
     separator.x = (m_window.window_w * 0.5f) - (separator.w * 0.5f);
     separator.y = m_window.window_h - separator.h;
+
+    SDL_RenderFillRect(m_window.renderer, &separator);
 
     const int px      = separator.w;
     const int spacing = separator.w * 4;
@@ -187,8 +191,6 @@ Game::drawBackground()
     drawScore(m_player_2_points,
               px,
               (separator.x + (separator.w * 0.5f)) + spacing);
-
-    SDL_RenderFillRect(m_window.renderer, &separator);
 }
 
 void
@@ -229,51 +231,36 @@ Game::hasCollision(const Entity_t &a, const Entity_t &b)
 }
 
 void
-Game::calculateBallYMovement(Entity_t *p)
-{
-    m_ball.setYDirection(MD_NONE);
-    m_ball.setYDirection(MoveDirections((p->move_direction >> 2) << 2));
-}
-
-void
 Game::moveEntity(Entity_t *const entity)
 {
     switch (entity->move_direction) {
         case MD_NONE:
             return;
         case MD_LEFT:
-
             entity->x -= entity->move_speed;
             break;
         case MD_RIGHT:
-
             entity->x += entity->move_speed;
             break;
         case MD_UP:
-
             entity->y -= entity->move_speed;
             break;
         case MD_DOWN:
-
             entity->y += entity->move_speed;
             break;
         case (MD_LEFT | MD_UP):
-
             entity->x -= entity->move_speed;
             entity->y -= entity->move_speed;
             break;
         case (MD_LEFT | MD_DOWN):
-
             entity->x -= entity->move_speed;
             entity->y += entity->move_speed;
             break;
         case (MD_RIGHT | MD_UP):
-
             entity->x += entity->move_speed;
             entity->y -= entity->move_speed;
             break;
         case (MD_RIGHT | MD_DOWN):
-
             entity->x += entity->move_speed;
             entity->y += entity->move_speed;
             break;
@@ -281,7 +268,7 @@ Game::moveEntity(Entity_t *const entity)
             return;
     }
 
-    if (entity->y <= 0) {
+    if (entity->y < 0) {
         entity->y = 0;
     } else if ((entity->y + entity->h) >= m_window.window_h) {
         entity->y = m_window.window_h - entity->h;
@@ -317,10 +304,12 @@ void
 Game::moveBall()
 {
     if (hasCollision(m_player_1, m_ball)) {
-        calculateBallYMovement(&m_player_1);
+        m_ball.setYDirection(
+            MoveDirections((m_player_1.move_direction >> 2) << 2));
         m_ball.setXDirection(MD_RIGHT);
     } else if (hasCollision(m_player_2, m_ball)) {
-        calculateBallYMovement(&m_player_2);
+        m_ball.setYDirection(
+            MoveDirections((m_player_2.move_direction >> 2) << 2));
         m_ball.setXDirection(MD_LEFT);
     } else if ((m_ball.x + m_ball.w) >= (m_player_2.x + m_player_2.w)) {
         m_player_1_points++;

@@ -5,8 +5,6 @@
 #include <SDL2/SDL_stdinc.h>
 
 class Game {
-    struct Entitys_t;
-
 public:
     ~Game();
     Game();
@@ -41,7 +39,7 @@ private:
         inline void setXDirection(const MoveDirections &direction)
         {
             move_direction
-                = (move_direction ^ (move_direction & (3))) | direction;
+                = (move_direction ^ (move_direction & 3)) | direction;
         }
 
         inline SDL_Rect toRect() const
@@ -71,7 +69,6 @@ private:
     void initEntities();
     void movePlayers();
     void moveBall();
-    void calculateBallYMovement(Entity_t *const);
     void drawScore(size_t score, int pixel_size, int x_offset);
 
     static bool hasCollision(const Entity_t &, const Entity_t &);
