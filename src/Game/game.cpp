@@ -27,6 +27,7 @@ Game::Game()
         throw std::runtime_error("Game::Game(): Failed to Create Window");
     }
 
+    // initialize entities colors
     m_player_1.color = m_player_2.color = m_ball.color
         = { .r = 255, .g = 255, .b = 255, .a = 255 };
 
@@ -40,6 +41,7 @@ Game::~Game()
     SDL_Quit();
 }
 
+// game loop
 int
 Game::play()
 {
@@ -114,6 +116,7 @@ Game::play()
     return -1;
 }
 
+// set the starting values
 void
 Game::initEntities()
 {
@@ -139,6 +142,7 @@ Game::initEntities()
     m_ball.move_speed                             = m_ball.h * 0.5f;
 }
 
+// draw the score numbers on the game
 void
 Game::drawScore(size_t score, int pixel_size, int x_offset)
 {
@@ -161,6 +165,7 @@ Game::drawScore(size_t score, int pixel_size, int x_offset)
     }
 }
 
+// draw thins behind the main game entity
 void
 Game::drawBackground()
 {
@@ -193,6 +198,7 @@ Game::drawBackground()
               (separator.x + (separator.w * 0.5f)) + spacing);
 }
 
+// draw a single entity
 void
 Game::drawEntity(const Entity_t &entity)
 {
@@ -205,6 +211,7 @@ Game::drawEntity(const Entity_t &entity)
     SDL_RenderFillRect(m_window.renderer, &r);
 }
 
+// draw the games' entities
 void
 Game::drawEntities()
 {
@@ -213,6 +220,7 @@ Game::drawEntities()
     drawEntity(m_player_2);
 }
 
+// check collision between two entities (AABB)
 bool
 Game::hasCollision(const Entity_t &a, const Entity_t &b)
 {
@@ -230,6 +238,7 @@ Game::hasCollision(const Entity_t &a, const Entity_t &b)
              || aMinY >= bMaxY);
 }
 
+// move a entity
 void
 Game::moveEntity(Entity_t *const entity)
 {
@@ -275,6 +284,7 @@ Game::moveEntity(Entity_t *const entity)
     }
 }
 
+// move  player 1/2
 void
 Game::movePlayers()
 {
@@ -300,6 +310,7 @@ Game::movePlayers()
     }
 }
 
+// handles the ball movement, deflection, and bounds checking
 void
 Game::moveBall()
 {
