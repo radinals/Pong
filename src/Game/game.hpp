@@ -22,6 +22,14 @@ private:
 
     struct Color_t {
         int r = 0, g = 0, b = 0, a = 0;
+        Color_t() { }
+        Color_t(int r, int g, int b, int a)
+        {
+            this->r = r;
+            this->g = g;
+            this->b = b;
+            this->a = a;
+        };
     };
 
     struct Entity_t {
@@ -50,15 +58,19 @@ private:
         }
     };
 
-    struct GameWindow_t {
+    struct GameWindow {
         static constexpr const char *window_title = "Pong";
         static constexpr int         window_w = 800, window_h = 600;
-        static const inline Color_t  bg_Color
-            = { .r = 0, .g = 0, .b = 0, .a = 255 };
 
-        SDL_Window   *window   = nullptr;
-        SDL_Renderer *renderer = nullptr;
-    } m_window;
+        static Color_t bg_Color;
+        static Color_t fg_Color;
+
+        static SDL_Window   *window;
+        static SDL_Renderer *renderer;
+    };
+
+    const static Color_t m_clr_Black;
+    const static Color_t m_clr_White;
 
     bool     m_game_reset = false, m_vs_com = false;
     size_t   m_player_1_points = 0, m_player_2_points = 0;

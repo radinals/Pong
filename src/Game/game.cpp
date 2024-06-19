@@ -12,32 +12,41 @@
 #include <cassert>
 #include <stdexcept>
 
+SDL_Window   *Game::GameWindow::window   = nullptr;
+SDL_Renderer *Game::GameWindow::renderer = nullptr;
+
+const Game::Color_t Game::m_clr_Black = Game::Color_t(0, 0, 0, 255);
+const Game::Color_t Game::m_clr_White = Game::Color_t(255, 255, 255, 255);
+
+Game::Color_t Game::GameWindow::bg_Color = Game::m_clr_Black;
+Game::Color_t Game::GameWindow::fg_Color = Game::m_clr_White;
+
 Game::Game()
 {
     if (SDL_Init(SDL_INIT_EVERYTHING) >= 0) {
-        m_window.window = SDL_CreateWindow(m_window.window_title,
-                                           SDL_WINDOWPOS_UNDEFINED,
-                                           SDL_WINDOWPOS_UNDEFINED,
-                                           m_window.window_w,
-                                           m_window.window_h,
-                                           SDL_WINDOW_SHOWN);
-        m_window.renderer
-            = SDL_CreateRenderer(m_window.window, -1, SDL_RENDERER_ACCELERATED);
+        GameWindow::window   = SDL_CreateWindow(GameWindow::window_title,
+                                              SDL_WINDOWPOS_UNDEFINED,
+                                              SDL_WINDOWPOS_UNDEFINED,
+                                              GameWindow::window_w,
+                                              GameWindow::window_h,
+                                              SDL_WINDOW_SHOWN);
+        GameWindow::renderer = SDL_CreateRenderer(GameWindow::window,
+                                                  -1,
+                                                  SDL_RENDERER_ACCELERATED);
     } else {
         throw std::runtime_error("Game::Game(): Failed to Create Window");
     }
 
     // initialize entities colors
-    m_player_1.color = m_player_2.color = m_ball.color
-        = { .r = 255, .g = 255, .b = 255, .a = 255 };
+    m_player_1.color = m_player_2.color = m_ball.color = m_clr_White;
 
     initEntities();
 }
 
 Game::~Game()
 {
-    SDL_DestroyRenderer(m_window.renderer);
-    SDL_DestroyWindow(m_window.window);
+    SDL_DestroyRenderer(GameWindow::renderer);
+    SDL_DestroyWindow(GameWindow::window);
     SDL_Quit();
 }
 
@@ -98,7 +107,7 @@ Game::play()
         drawBackground();
         drawEntities();
 
-        SDL_RenderPresent(m_window.renderer);
+        SDL_RenderPresent(GameWindow::renderer);
         SDL_Delay(50);
 
         if (m_player_2_points >= Letters::LETTER_AMOUNT - 1
@@ -122,18 +131,18 @@ Game::initEntities()
 
     m_player_1.move_direction = m_player_2.move_direction = MD_NONE;
 
-    m_ball.w = m_ball.h = m_window.window_h * 0.025f;
-    m_ball.y            = (m_window.window_h * 0.5f) - (m_ball.h * 0.5f);
-    m_ball.x            = (m_window.window_w * 0.5f) - (m_ball.w * 0.5f);
+    m_ball.w = m_ball.h = GameWindow::window_h * 0.025f;
+    m_ball.y            = (GameWindow::window_h * 0.5f) - (m_ball.h * 0.5f);
+    m_ball.x            = (GameWindow::window_w * 0.5f) - (m_ball.w * 0.5f);
 
     m_player_1.w = m_player_2.w = (m_ball.w);
     m_player_1.h = m_player_2.h = (m_ball.h * 8);
 
     m_player_1.x = m_ball.w * 2;
-    m_player_1.y = (m_window.window_h * 0.5f) - (m_player_1.h * 0.5f);
+    m_player_1.y = (GameWindow::window_h * 0.5f) - (m_player_1.h * 0.5f);
 
-    m_player_2.x = (m_window.window_w - m_player_2.w) - m_ball.w * 2;
-    m_player_2.y = (m_window.window_h * 0.5f) - (m_player_2.h * 0.5f);
+    m_player_2.x = (GameWindow::window_w - m_player_2.w) - m_ball.w * 2;
+    m_player_2.y = (GameWindow::window_h * 0.5f) - (m_player_2.h * 0.5f);
 
     m_player_1.move_speed = m_player_2.move_speed = m_player_1.h * 0.5f;
     m_ball.move_y_speed_mod = m_ball.move_x_speed_mod = 0;
@@ -155,7 +164,7 @@ Game::drawScore(size_t score, int pixel_size, int x_offset)
         for (size_t j = 0; j < Letters::LETTER_W; j++) {
             if (score < Letters::LETTER_AMOUNT
                 && Letters::letters[score][i][j]) {
-                SDL_RenderFillRect(m_window.renderer, &p);
+                SDL_RenderFillRect(GameWindow::renderer, &p);
             }
             p.x += pixel_size;
         }
@@ -167,22 +176,26 @@ Game::drawScore(size_t score, int pixel_size, int x_offset)
 void
 Game::drawBackground()
 {
-    SDL_SetRenderDrawColor(m_window.renderer,
-                           m_window.bg_Color.r,
-                           m_window.bg_Color.g,
-                           m_window.bg_Color.b,
-                           m_window.bg_Color.a);
-    SDL_RenderClear(m_window.renderer);
+    SDL_SetRenderDrawColor(GameWindow::renderer,
+                           GameWindow::bg_Color.r,
+                           GameWindow::bg_Color.g,
+                           GameWindow::bg_Color.b,
+                           GameWindow::bg_Color.a);
+    SDL_RenderClear(GameWindow::renderer);
 
-    SDL_SetRenderDrawColor(m_window.renderer, 255, 255, 255, 255);
+    SDL_SetRenderDrawColor(GameWindow::renderer,
+                           GameWindow::fg_Color.r,
+                           GameWindow::fg_Color.g,
+                           GameWindow::fg_Color.b,
+                           GameWindow::fg_Color.a);
 
     SDL_Rect separator;
-    separator.h = m_window.window_h;
-    separator.w = m_window.window_w * 0.01f;
-    separator.x = (m_window.window_w * 0.5f) - (separator.w * 0.5f);
-    separator.y = m_window.window_h - separator.h;
+    separator.h = GameWindow::window_h;
+    separator.w = GameWindow::window_w * 0.01f;
+    separator.x = (GameWindow::window_w * 0.5f) - (separator.w * 0.5f);
+    separator.y = GameWindow::window_h - separator.h;
 
-    SDL_RenderFillRect(m_window.renderer, &separator);
+    SDL_RenderFillRect(GameWindow::renderer, &separator);
 
     const int px      = separator.w;
     const int spacing = separator.w * 4;
@@ -201,12 +214,12 @@ void
 Game::drawEntity(const Entity_t &entity)
 {
     const SDL_Rect r = entity.toRect();
-    SDL_SetRenderDrawColor(m_window.renderer,
+    SDL_SetRenderDrawColor(GameWindow::renderer,
                            entity.color.r,
                            entity.color.g,
                            entity.color.b,
                            entity.color.a);
-    SDL_RenderFillRect(m_window.renderer, &r);
+    SDL_RenderFillRect(GameWindow::renderer, &r);
 }
 
 // draw the games' entities
@@ -277,8 +290,8 @@ Game::moveEntity(Entity_t *const entity)
 
     if (entity->y < 0) {
         entity->y = 0;
-    } else if ((entity->y + entity->h) >= m_window.window_h) {
-        entity->y = m_window.window_h - entity->h;
+    } else if ((entity->y + entity->h) >= GameWindow::window_h) {
+        entity->y = GameWindow::window_h - entity->h;
     }
 }
 
@@ -302,8 +315,8 @@ Game::movePlayers()
         m_player_2.y = m_ball.y;
         if (m_player_2.y <= 0) {
             m_player_2.y = 0;
-        } else if ((m_player_2.y + m_player_2.h) >= m_window.window_h) {
-            m_player_2.y = m_window.window_h - m_player_2.h;
+        } else if ((m_player_2.y + m_player_2.h) >= GameWindow::window_h) {
+            m_player_2.y = GameWindow::window_h - m_player_2.h;
         }
     }
 }
@@ -362,7 +375,7 @@ Game::moveBall()
         m_game_reset = true;
     } else if (m_ball.y <= 0) {
         m_ball.setYDirection(MD_DOWN);
-    } else if ((m_ball.y + m_ball.h) >= m_window.window_h) {
+    } else if ((m_ball.y + m_ball.h) >= GameWindow::window_h) {
         m_ball.setYDirection(MD_UP);
     }
 
