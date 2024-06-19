@@ -308,6 +308,7 @@ Game::movePlayers()
     }
 }
 
+// set the correct deflection direction and speed
 void
 Game::calculateBallDeflection(const Entity_t &paddle)
 {
