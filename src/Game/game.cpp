@@ -21,6 +21,12 @@ const Game::Color_t Game::m_clr_White = Game::Color_t(255, 255, 255, 255);
 Game::Color_t Game::GameWindow::bg_Color = Game::m_clr_Black;
 Game::Color_t Game::GameWindow::fg_Color = Game::m_clr_White;
 
+Game::Entity_t Game::m_player_1, Game::m_player_2, Game::m_ball;
+
+bool Game::m_game_reset = false, Game::m_vs_com = false;
+
+size_t Game::m_player_1_points = 0, Game::m_player_2_points = 0;
+
 Game::Game()
 {
     if (SDL_Init(SDL_INIT_EVERYTHING) >= 0) {

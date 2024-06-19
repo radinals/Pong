@@ -7,11 +7,18 @@
 class Game {
 public:
     ~Game();
-    Game();
+
+    static Game &getInstance()
+    {
+        static Game g;
+        return g;
+    }
 
     int play();
 
 private:
+    Game();
+
     enum MoveDirections {
         MD_NONE,
         MD_LEFT  = 1 << 0,
@@ -72,20 +79,19 @@ private:
     const static Color_t m_clr_Black;
     const static Color_t m_clr_White;
 
-    bool     m_game_reset = false, m_vs_com = false;
-    size_t   m_player_1_points = 0, m_player_2_points = 0;
-    Entity_t m_player_1, m_player_2, m_ball;
+    static bool     m_game_reset, m_vs_com;
+    static size_t   m_player_1_points, m_player_2_points;
+    static Entity_t m_player_1, m_player_2, m_ball;
 
-    void drawBackground();
-    void moveEntity(Entity_t *const);
-    void drawEntity(const Entity_t &);
-    void drawEntities();
-    void initEntities();
-    void movePlayers();
-    void moveBall();
-    void calculateBallDeflection(const Entity_t &);
-    void drawScore(size_t score, int pixel_size, int x_offset);
-
+    static void drawBackground();
+    static void drawEntities();
+    static void initEntities();
+    static void movePlayers();
+    static void moveBall();
+    static void calculateBallDeflection(const Entity_t &);
+    static void moveEntity(Entity_t *const);
+    static void drawScore(size_t score, int pixel_size, int x_offset);
+    static void drawEntity(const Entity_t &);
     static bool hasCollision(const Entity_t &, const Entity_t &);
 };
 

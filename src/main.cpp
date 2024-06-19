@@ -3,6 +3,5 @@
 int
 main(int argc, char* argv[])
 {
-    Game g;
-    return g.play();
+    return Game::getInstance().play();
 }
