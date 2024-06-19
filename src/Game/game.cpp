@@ -122,12 +122,12 @@ Game::initEntities()
 
     m_player_1.move_direction = m_player_2.move_direction = MD_NONE;
 
-    m_ball.w = m_ball.h = m_window.window_h * 0.05f;
-    m_ball.y            = (m_window.window_h * 0.5f) - m_ball.h * 0.5f;
-    m_ball.x            = (m_window.window_w * 0.5f) - m_ball.w * 0.5f;
+    m_ball.w = m_ball.h = m_window.window_h * 0.025f;
+    m_ball.y            = (m_window.window_h * 0.5f) - (m_ball.h * 0.5f);
+    m_ball.x            = (m_window.window_w * 0.5f) - (m_ball.w * 0.5f);
 
     m_player_1.w = m_player_2.w = (m_ball.w);
-    m_player_1.h = m_player_2.h = (m_ball.h * 4);
+    m_player_1.h = m_player_2.h = (m_ball.h * 8);
 
     m_player_1.x = m_ball.w * 2;
     m_player_1.y = (m_window.window_h * 0.5f) - (m_player_1.h * 0.5f);
@@ -135,8 +135,9 @@ Game::initEntities()
     m_player_2.x = (m_window.window_w - m_player_2.w) - m_ball.w * 2;
     m_player_2.y = (m_window.window_h * 0.5f) - (m_player_2.h * 0.5f);
 
-    m_player_1.move_speed = m_player_2.move_speed = m_player_1.h * 0.2f;
-    m_ball.move_speed                             = m_ball.h * 0.5f;
+    m_player_1.move_speed = m_player_2.move_speed = m_player_1.h * 0.5f;
+    m_ball.move_y_speed_mod = m_ball.move_x_speed_mod = 0;
+    m_ball.move_speed                                 = m_ball.h * 0.5f;
 }
 
 // draw the score numbers on the game
@@ -243,32 +244,32 @@ Game::moveEntity(Entity_t *const entity)
         case MD_NONE:
             return;
         case MD_LEFT:
-            entity->x -= entity->move_speed;
+            entity->x -= entity->move_speed + entity->move_x_speed_mod;
             break;
         case MD_RIGHT:
-            entity->x += entity->move_speed;
+            entity->x += entity->move_speed + entity->move_x_speed_mod;
             break;
         case MD_UP:
-            entity->y -= entity->move_speed;
+            entity->y -= entity->move_speed + entity->move_y_speed_mod;
             break;
         case MD_DOWN:
-            entity->y += entity->move_speed;
+            entity->y += entity->move_speed + entity->move_y_speed_mod;
             break;
         case (MD_LEFT | MD_UP):
-            entity->x -= entity->move_speed;
-            entity->y -= entity->move_speed;
+            entity->x -= entity->move_speed + entity->move_x_speed_mod;
+            entity->y -= entity->move_speed + entity->move_y_speed_mod;
             break;
         case (MD_LEFT | MD_DOWN):
-            entity->x -= entity->move_speed;
-            entity->y += entity->move_speed;
+            entity->x -= entity->move_speed + entity->move_x_speed_mod;
+            entity->y += entity->move_speed + entity->move_y_speed_mod;
             break;
         case (MD_RIGHT | MD_UP):
-            entity->x += entity->move_speed;
-            entity->y -= entity->move_speed;
+            entity->x += entity->move_speed + entity->move_x_speed_mod;
+            entity->y -= entity->move_speed + entity->move_y_speed_mod;
             break;
         case (MD_RIGHT | MD_DOWN):
-            entity->x += entity->move_speed;
-            entity->y += entity->move_speed;
+            entity->x += entity->move_speed + entity->move_x_speed_mod;
+            entity->y += entity->move_speed + entity->move_y_speed_mod;
             break;
         default:
             return;
@@ -307,17 +308,50 @@ Game::movePlayers()
     }
 }
 
+void
+Game::calculateBallDeflection(const Entity_t &paddle)
+{
+    m_ball.move_x_speed_mod = m_ball.move_speed;
+
+    if ((paddle.move_direction >> 2) != MD_NONE) {
+        m_ball.setYDirection(MoveDirections((paddle.move_direction >> 2) << 2));
+        return;
+    }
+
+    const int paddle_center_y = paddle.y + (paddle.h * 0.5f),
+              paddle_y_area = paddle.h * ((float) 1 / 3), y_speed = 0;
+
+    const int ball_max = m_ball.y, ball_min = m_ball.y + m_ball.h;
+
+    const int paddle_middle_max = paddle_center_y - (paddle_y_area * 0.5f),
+              paddle_middle_min = paddle_center_y + (paddle_y_area * 0.5f);
+
+    const int paddle_upper_max = paddle_middle_max - paddle_y_area,
+              paddle_upper_min = paddle_middle_max;
+
+    const int paddle_lower_max = paddle_middle_min,
+              paddle_lower_min = paddle_middle_min + paddle_y_area;
+
+    if (ball_min >= paddle_lower_max || ball_max >= paddle_lower_min) {
+        m_ball.setYDirection(MD_DOWN);
+        m_ball.move_y_speed_mod = m_ball.move_speed * 0.5f;
+    } else if (ball_min >= paddle_middle_max || ball_max >= paddle_middle_min) {
+        m_ball.setYDirection(MD_NONE);
+    } else if (ball_min >= paddle_upper_max || ball_max >= paddle_upper_min) {
+        m_ball.setYDirection(MD_UP);
+        m_ball.move_y_speed_mod = m_ball.move_speed * 0.5f;
+    }
+}
+
 // handles the ball movement, deflection, and bounds checking
 void
 Game::moveBall()
 {
     if (hasCollision(m_player_1, m_ball)) {
-        m_ball.setYDirection(
-            MoveDirections((m_player_1.move_direction >> 2) << 2));
+        calculateBallDeflection(m_player_1);
         m_ball.setXDirection(MD_RIGHT);
     } else if (hasCollision(m_player_2, m_ball)) {
-        m_ball.setYDirection(
-            MoveDirections((m_player_2.move_direction >> 2) << 2));
+        calculateBallDeflection(m_player_2);
         m_ball.setXDirection(MD_LEFT);
     } else if ((m_ball.x + m_ball.w) >= (m_player_2.x + m_player_2.w)) {
         m_player_1_points++;

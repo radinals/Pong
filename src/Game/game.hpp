@@ -26,8 +26,10 @@ private:
 
     struct Entity_t {
         int          x = 0, y = 0, w = 0, h = 0;
-        unsigned int move_direction = 0;
-        float        move_speed     = 0;
+        unsigned int move_direction   = 0;
+        int          move_y_speed_mod = 0;
+        int          move_x_speed_mod = 0;
+        int          move_speed       = 0;
         Color_t      color;
 
         inline void setYDirection(const MoveDirections &direction)
@@ -69,6 +71,7 @@ private:
     void initEntities();
     void movePlayers();
     void moveBall();
+    void calculateBallDeflection(const Entity_t &);
     void drawScore(size_t score, int pixel_size, int x_offset);
 
     static bool hasCollision(const Entity_t &, const Entity_t &);
