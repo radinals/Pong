@@ -73,9 +73,6 @@ Game::play()
                         break;
                     case SDLK_F2:
                         m_ball.move_speed++;
-                        if (m_ball.move_speed >= m_ball.w) {
-                            m_ball.move_speed = m_ball.w;
-                        }
                         break;
                     case SDLK_F3:
                         m_ball.move_speed--;
