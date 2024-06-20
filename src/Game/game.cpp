@@ -320,7 +320,7 @@ Game::movePlayers()
         }
 
         m_player_2.y = m_ball.y;
-        if (m_player_2.y <= 0) {
+        if (m_player_2.y < 0) {
             m_player_2.y = 0;
         } else if ((m_player_2.y + m_player_2.h) >= GameWindow::window_h) {
             m_player_2.y = GameWindow::window_h - m_player_2.h;
@@ -359,7 +359,7 @@ Game::calculateBallDeflection(const Entity_t &paddle)
         m_ball.setYDirection(MD_UP);
     }
 
-    m_ball.velocity = m_ball.move_speed;
+    m_ball.velocity = m_ball.move_speed * 1.1f;
 }
 
 // handles the ball movement, deflection, and bounds checking
