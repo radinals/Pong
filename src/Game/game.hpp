@@ -41,10 +41,9 @@ private:
 
     struct Entity_t {
         int          x = 0, y = 0, w = 0, h = 0;
-        unsigned int move_direction   = 0;
-        int          move_y_speed_mod = 0;
-        int          move_x_speed_mod = 0;
-        int          move_speed       = 0;
+        unsigned int move_direction = 0;
+        int          velocity       = 0;
+        int          move_speed     = 0;
         Color_t      color;
 
         inline void setYDirection(const MoveDirections &direction)

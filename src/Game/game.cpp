@@ -114,12 +114,12 @@ Game::play()
         drawEntities();
 
         SDL_RenderPresent(GameWindow::renderer);
-        SDL_Delay(50);
+        SDL_Delay(33);
 
         if (m_player_2_points >= Letters::LETTER_AMOUNT - 1
             || m_player_1_points >= Letters::LETTER_AMOUNT - 1) {
             m_player_1_points = m_player_2_points = 0;
-            SDL_Delay(500);
+            SDL_Delay(2000);
             initEntities();
             continue;
         }
@@ -141,7 +141,7 @@ Game::initEntities()
     m_ball.y            = (GameWindow::window_h * 0.5f) - (m_ball.h * 0.5f);
     m_ball.x            = (GameWindow::window_w * 0.5f) - (m_ball.w * 0.5f);
 
-    m_player_1.w = m_player_2.w = (m_ball.w);
+    m_player_1.w = m_player_2.w = (m_ball.w * 1.1f);
     m_player_1.h = m_player_2.h = (m_ball.h * 8);
 
     m_player_1.x = m_ball.w * 2;
@@ -151,8 +151,9 @@ Game::initEntities()
     m_player_2.y = (GameWindow::window_h * 0.5f) - (m_player_2.h * 0.5f);
 
     m_player_1.move_speed = m_player_2.move_speed = m_player_1.h * 0.5f;
-    m_ball.move_y_speed_mod = m_ball.move_x_speed_mod = 0;
-    m_ball.move_speed                                 = m_ball.h * 0.5f;
+
+    m_ball.move_speed = m_ball.w * 0.9f;
+    m_ball.velocity   = 0;
 }
 
 // draw the score numbers on the game
@@ -263,32 +264,32 @@ Game::moveEntity(Entity_t *const entity)
         case MD_NONE:
             return;
         case MD_LEFT:
-            entity->x -= entity->move_speed + entity->move_x_speed_mod;
+            entity->x -= entity->move_speed + entity->velocity;
             break;
         case MD_RIGHT:
-            entity->x += entity->move_speed + entity->move_x_speed_mod;
+            entity->x += entity->move_speed + entity->velocity;
             break;
         case MD_UP:
-            entity->y -= entity->move_speed + entity->move_y_speed_mod;
+            entity->y -= entity->move_speed + entity->velocity;
             break;
         case MD_DOWN:
-            entity->y += entity->move_speed + entity->move_y_speed_mod;
+            entity->y += entity->move_speed + entity->velocity;
             break;
         case (MD_LEFT | MD_UP):
-            entity->x -= entity->move_speed + entity->move_x_speed_mod;
-            entity->y -= entity->move_speed + entity->move_y_speed_mod;
+            entity->x -= entity->move_speed + entity->velocity;
+            entity->y -= entity->move_speed + entity->velocity;
             break;
         case (MD_LEFT | MD_DOWN):
-            entity->x -= entity->move_speed + entity->move_x_speed_mod;
-            entity->y += entity->move_speed + entity->move_y_speed_mod;
+            entity->x -= entity->move_speed + entity->velocity;
+            entity->y += entity->move_speed + entity->velocity;
             break;
         case (MD_RIGHT | MD_UP):
-            entity->x += entity->move_speed + entity->move_x_speed_mod;
-            entity->y -= entity->move_speed + entity->move_y_speed_mod;
+            entity->x += entity->move_speed + entity->velocity;
+            entity->y -= entity->move_speed + entity->velocity;
             break;
         case (MD_RIGHT | MD_DOWN):
-            entity->x += entity->move_speed + entity->move_x_speed_mod;
-            entity->y += entity->move_speed + entity->move_y_speed_mod;
+            entity->x += entity->move_speed + entity->velocity;
+            entity->y += entity->move_speed + entity->velocity;
             break;
         default:
             return;
@@ -331,8 +332,6 @@ Game::movePlayers()
 void
 Game::calculateBallDeflection(const Entity_t &paddle)
 {
-    m_ball.move_x_speed_mod = m_ball.move_speed;
-
     if ((paddle.move_direction >> 2) != MD_NONE) {
         m_ball.setYDirection(MoveDirections((paddle.move_direction >> 2) << 2));
         return;
@@ -354,13 +353,13 @@ Game::calculateBallDeflection(const Entity_t &paddle)
 
     if (ball_min >= paddle_lower_max || ball_max >= paddle_lower_min) {
         m_ball.setYDirection(MD_DOWN);
-        m_ball.move_y_speed_mod = m_ball.move_speed * 0.5f;
     } else if (ball_min >= paddle_middle_max || ball_max >= paddle_middle_min) {
         m_ball.setYDirection(MD_NONE);
     } else if (ball_min >= paddle_upper_max || ball_max >= paddle_upper_min) {
         m_ball.setYDirection(MD_UP);
-        m_ball.move_y_speed_mod = m_ball.move_speed * 0.5f;
     }
+
+    m_ball.velocity = m_ball.move_speed;
 }
 
 // handles the ball movement, deflection, and bounds checking
@@ -386,4 +385,6 @@ Game::moveBall()
     }
 
     moveEntity(&m_ball);
+
+    if (m_ball.velocity > 0) { m_ball.velocity--; }
 }
